@@ -1,0 +1,9 @@
+{
+  "name": "voice-bot-console",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/intents.test.mjs",
+    "serve": "python3 -m http.server 8000"
+  }
+}

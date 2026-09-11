@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nova — robot voice console</title>
+  <meta name="description" content="Voice and face-recognition console for an autonomous robot.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Chakra+Petch:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="6" y="9" width="20" height="16" rx="4"/>
+        <circle cx="12.5" cy="17" r="2.2"/><circle cx="19.5" cy="17" r="2.2"/>
+        <path d="M16 9V4.5"/><circle cx="16" cy="3.5" r="1.6"/>
+      </svg>
+      <h1 id="botTitle">Nova</h1>
+    </div>
+    <ul class="status" aria-label="System status">
+      <li id="stCam" data-state="off">Camera off</li>
+      <li id="stMic" data-state="off">Mic ready</li>
+      <li id="stLink" data-state="sim">Simulator only</li>
+    </ul>
+    <button id="btnSettings" class="btn">Settings</button>
+  </header>
+
+  <main class="console">
+    <!-- Camera + face recognition -->
+    <section class="panel cam" aria-labelledby="camHeading">
+      <div class="panel-head">
+        <h2 id="camHeading">Who's here</h2>
+        <div class="actions">
+          <button id="btnCam" class="btn primary">Start camera</button>
+          <button id="btnEnroll" class="btn" disabled>Add a face</button>
+        </div>
+      </div>
+      <div class="viewport" id="viewport">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay" aria-hidden="true"></canvas>
+        <p class="viewport-empty" id="camEmpty">Start the camera so I can recognise who's in front of me.</p>
+      </div>
+      <p class="welcome" id="welcome" aria-live="polite">No one in view.</p>
+      <details class="faces">
+        <summary>Saved faces (<span id="faceCount">0</span>)</summary>
+        <ul id="faceList" class="face-list"></ul>
+        <div class="row">
+          <button id="btnExport" class="btn small">Export faces</button>
+          <label class="btn small" for="fileImport">Import faces</label>
+          <input id="fileImport" type="file" accept="application/json" hidden>
+        </div>
+        <p class="fine">Faces are stored in this browser only. Export them to move to another device.</p>
+      </details>
+    </section>
+
+    <!-- Conversation -->
+    <section class="panel chat" aria-labelledby="chatHeading">
+      <div class="panel-head">
+        <h2 id="chatHeading">Conversation</h2>
+        <button id="btnClear" class="btn small quiet">Clear</button>
+      </div>
+      <ol id="log" class="log" aria-live="polite"></ol>
+      <p class="interim" id="interim" aria-live="polite"></p>
+      <form class="composer" id="composer" autocomplete="off">
+        <button type="button" id="btnMic" class="mic" aria-pressed="false" aria-label="Start listening">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9" y="3" width="6" height="11" rx="3"/>
+            <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>
+          </svg>
+        </button>
+        <label class="sr-only" for="textIn">Message</label>
+        <input id="textIn" type="text" placeholder="Speak, or type a message or command">
+        <button type="submit" class="btn primary">Send</button>
+      </form>
+      <p class="hint">Try “move forward 3 steps”, “rotate 180”, “what's the weather in Chennai” or “time and date”. Press <kbd>Space</kbd> to talk.</p>
+    </section>
+
+    <!-- Robot -->
+    <section class="panel robot" aria-labelledby="robotHeading">
+      <div class="panel-head">
+        <h2 id="robotHeading">Robot</h2>
+        <button id="btnReset" class="btn small quiet">Reset position</button>
+      </div>
+      <canvas id="sim" class="sim" role="img" aria-label="Top-down view of the robot's position and heading"></canvas>
+      <dl class="readout">
+        <div><dt>Position (steps)</dt><dd id="rdPos">0, 0</dd></div>
+        <div><dt>Heading</dt><dd id="rdHead">0°</dd></div>
+        <div><dt>Status</dt><dd id="rdBusy">Idle</dd></div>
+      </dl>
+      <div class="pad" aria-label="Manual controls">
+        <button class="btn small" data-cmd='{"action":"rotate","dir":"left","deg":90}'>Turn left</button>
+        <button class="btn small" data-cmd='{"action":"move","dir":"forward","steps":1}'>Forward</button>
+        <button class="btn small" data-cmd='{"action":"move","dir":"backward","steps":1}'>Back</button>
+        <button class="btn small" data-cmd='{"action":"rotate","dir":"right","deg":90}'>Turn right</button>
+        <button class="btn small stop" data-cmd='{"action":"stop"}'>Stop</button>
+      </div>
+      <details class="packet">
+        <summary>Last command sent</summary>
+        <pre id="lastPacket">Nothing sent yet.</pre>
+      </details>
+    </section>
+  </main>
+
+  <!-- Add a face -->
+  <dialog id="enrollDlg" class="dlg">
+    <form method="dialog" id="enrollForm">
+      <h2>Add a face</h2>
+      <p>Look at the camera alone, in good light. I'll take five quick samples.</p>
+      <label for="enrollName">Name</label>
+      <input id="enrollName" type="text" required maxlength="40" placeholder="e.g. Steve">
+      <p class="enroll-progress" id="enrollProgress" aria-live="polite"></p>
+      <div class="dlg-actions">
+        <button type="button" class="btn quiet" id="enrollCancel">Cancel</button>
+        <button type="submit" class="btn primary" id="enrollGo" value="go">Capture</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Settings -->
+  <dialog id="settingsDlg" class="dlg wide">
+    <form method="dialog" id="settingsForm">
+      <h2>Settings</h2>
+
+      <fieldset>
+        <legend>Assistant</legend>
+        <div class="grid2">
+          <label>Name<input name="botName" type="text" maxlength="24"></label>
+          <label>Speech language
+            <select name="lang">
+              <option value="en-IN">English (India)</option>
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="ta-IN">Tamil</option>
+              <option value="hi-IN">Hindi</option>
+            </select>
+          </label>
+          <label>Voice<select name="voice" id="voiceSelect"><option value="">Browser default</option></select></label>
+          <label>Speaking speed<input name="rate" type="range" min="0.7" max="1.4" step="0.05"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>General conversation</legend>
+        <div class="grid2">
+          <label>AI service
+            <select name="provider" id="providerSelect">
+              <option value="off">Off (built-in replies only)</option>
+              <option value="gemini">Google Gemini</option>
+              <option value="openai">OpenAI-compatible (Groq, OpenAI, OpenRouter)</option>
+              <option value="anthropic">Anthropic Claude</option>
+            </select>
+          </label>
+          <label>Model<input name="model" id="modelInput" type="text" spellcheck="false"></label>
+          <label class="span2" data-show="openai">API base URL<input name="baseUrl" type="url" spellcheck="false"></label>
+          <label class="span2" data-hide="off">API key<input name="apiKey" type="password" autocomplete="off" spellcheck="false"></label>
+        </div>
+        <p class="fine">The key is saved in this browser only. Never commit it to GitHub.</p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Weather and faces</legend>
+        <div class="grid2">
+          <label>Home city<input name="city" type="text" placeholder="Uses your location if empty"></label>
+          <label>Units
+            <select name="units"><option value="celsius">Celsius</option><option value="fahrenheit">Fahrenheit</option></select>
+          </label>
+          <label>Face match strictness
+            <input name="matchThreshold" type="range" min="0.35" max="0.65" step="0.01">
+            <span class="fine">Left is stricter. 0.5 suits most webcams.</span>
+          </label>
+          <label class="check"><input name="greetUnknown" type="checkbox"> Greet people I don't recognise</label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Robot link</legend>
+        <div class="grid2">
+          <label>Send commands to
+            <select name="linkMode" id="linkSelect">
+              <option value="sim">Simulator only</option>
+              <option value="mqtt">MQTT broker (Raspberry Pi or ESP32)</option>
+              <option value="ws">WebSocket direct (ESP32, local only)</option>
+            </select>
+          </label>
+          <label>Step length (cm)<input name="stepCm" type="number" min="1" max="100"></label>
+          <label class="span2" data-link="mqtt">Broker URL (must be wss:// on GitHub Pages)<input name="mqttUrl" type="text" spellcheck="false"></label>
+          <label class="span2" data-link="mqtt">Topic<input name="topic" type="text" spellcheck="false"></label>
+          <label class="span2" data-link="ws">Robot address<input name="wsUrl" type="text" spellcheck="false"></label>
+        </div>
+        <p class="fine" data-link="mqtt">Commands go to <code id="topicCmd"></code>. The robot replies on <code id="topicStatus"></code>.</p>
+      </fieldset>
+
+      <div class="dlg-actions">
+        <button type="button" class="btn quiet" id="settingsCancel">Cancel</button>
+        <button type="submit" class="btn primary" value="save">Save settings</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
