@@ -215,6 +215,11 @@ h2 { font-size: 1.25rem; }
   from { transform: scale(0.92); opacity: 0.9; }
   to { transform: scale(1.25); opacity: 0; }
 }
+.mic[aria-pressed="true"] {
+  /* live input level: the halo grows when the mic hears sound */
+  box-shadow: 0 0 0 calc(var(--level, 0) * 16px) var(--signal-soft);
+  transition: box-shadow 80ms linear;
+}
 .mic:disabled { background: var(--line); cursor: not-allowed; }
 
 .hint { margin: 0.6rem 0 0; font-size: 0.8125rem; color: var(--muted); }
