@@ -69,6 +69,7 @@ const voice = new Voice({
     if (on) $('interim').textContent = 'Listening…';
   },
   onError: (msg) => addMessage('system', msg),
+  onLevel: (level) => $('btnMic').style.setProperty('--level', level.toFixed(3)),
 });
 voice.voiceName = settings.voice;
 voice.rate = Number(settings.rate) || 1;
